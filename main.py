@@ -18,6 +18,35 @@ FONT = pygame.font.SysFont("arial", 30)
 class SudokuBoard:
     def __init__(self):
         self.grid = np.zeros((9,9))
+        self.small_grids = np.zeros((9, 3, 3))
+
+    def get_small_grids(self):
+        x = 0
+        count = 0
+        for i in range(3):
+            y = 0
+            for j in range(3):
+                self.small_grids[count] = self.grid[x:(x+3), y:(y+3)]
+                y += 3
+                count += 1
+            x += 3
+    
+    def is_valid(self, index, number):
+        x, y = index
+        self.get_small_grids()
+        tmp = x // 3
+        tmp2 = y // 3
+        grid_index = tmp + tmp2 * 3
+        if number in self.grid[:, x]:
+            return False
+        elif number in self.grid[y]:
+            return False
+        elif number in self.small_grids[grid_index]:
+            return False
+        else:
+            return True
+
+
     def solve(self):
         print("hey")
 
@@ -48,7 +77,7 @@ class SudokuGUI:
             if number != 0:
                 text = FONT.render(str(int(number)), True, BLACK)
                 textRect = text.get_rect()
-                textRect.center = ((index[0]) * (self.distance) + (self.distance / 2) + PADDING, (index[1]) * (self.distance) + (self.distance / 2) + PADDING)
+                textRect.center = ((index[1]) * (self.distance) + (self.distance / 2) + PADDING, (index[0]) * (self.distance) + (self.distance / 2) + PADDING)
                 self.screen.blit(text, textRect)
     
     def highlight_cell(self):
@@ -119,25 +148,34 @@ class SudokuGUI:
                         else:
                             self.selected = (self.selected[0], self.selected[1] + 1)
                     elif event.key == pygame.K_0 or event.key == pygame.K_BACKSPACE:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 0
+                        self.board.grid[self.selected[1]][self.selected[0]] = 0
                     elif event.key == pygame.K_1:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 1
+                        if self.board.is_valid(self.selected, 1):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 1
                     elif event.key == pygame.K_2:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 2
+                        if self.board.is_valid(self.selected, 2):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 2
                     elif event.key == pygame.K_3:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 3
+                        if self.board.is_valid(self.selected, 3):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 3
                     elif event.key == pygame.K_4:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 4
+                        if self.board.is_valid(self.selected, 4):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 4
                     elif event.key == pygame.K_5:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 5
+                        if self.board.is_valid(self.selected, 5):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 5
                     elif event.key == pygame.K_6:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 6
+                        if self.board.is_valid(self.selected, 6):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 6
                     elif event.key == pygame.K_7:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 7
+                        if self.board.is_valid(self.selected, 7):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 7
                     elif event.key == pygame.K_8:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 8
+                        if self.board.is_valid(self.selected, 8):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 8
                     elif event.key == pygame.K_9:
-                        self.board.grid[self.selected[0]][self.selected[1]] = 9
+                        if self.board.is_valid(self.selected, 9):
+                            self.board.grid[self.selected[1]][self.selected[0]] = 9
 
             self.draw_window()
 
