@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+import sys
 
 pygame.init()
 
@@ -22,7 +23,7 @@ class SudokuBoard:
         self.root_indexs = []
         self.potential_indexs = []
 
-    def get_small_grids(self):
+    '''def get_small_grids(self):
         x = 0
         count = 0
         for i in range(3):
@@ -31,11 +32,19 @@ class SudokuBoard:
                 self.small_grids[count] = self.grid[x:(x+3), y:(y+3)]
                 y += 3
                 count += 1
-            x += 3
+            x += 3'''
+
+    def update_small_grid(self, selected, number):
+        tmp = selected[1] // 3
+        tmp2 = selected[0] // 3
+        grid_index = tmp*3 + tmp2
+        row = selected[1] % 3
+        col = selected[0] % 3
+        self.small_grids[grid_index][row][col] = number
+
     
     def is_valid(self, index, number):
         col, row = index
-        self.get_small_grids()
         tmp = row // 3
         tmp2 = col // 3
         grid_index = tmp * 3 + tmp2
@@ -56,26 +65,28 @@ class SudokuBoard:
             return (index[0], index[1] + 1)
 
 
-    def solve(self):
+    def solve_bt(self):
         try:
             index = np.argwhere(self.grid == 0)[0]
         except IndexError:
             return True
         
-        if self.grid[index[0]][index[1]] == 0:
-            for k in range(9):
-                number = k + 1
-                if self.is_valid((index[1],index[0]), number):
-                    self.potential_indexs.append(index)
-                    self.grid[index[0]][index[1]] = number
-                    root.draw_window()
-                    if self.solve() == True:
-                        return True
-                    self.grid[index[0]][index[1]] = 0
-                    self.potential_indexs.pop()
-            return False
-        else:
-            return self.solve()
+        for k in range(9):
+            number = k + 1
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+            #root.draw_window()
+            if self.is_valid((index[1],index[0]), number):
+                self.grid[index[0]][index[1]] = number
+                self.update_small_grid((index[1], index[0]), number)
+                root.draw_window()
+                if self.solve_bt() == True:
+                    return True
+                self.grid[index[0]][index[1]] = 0
+                self.update_small_grid((index[1], index[0]), 0)
+        #root.draw_window()
+        return False
 
         
 
@@ -153,7 +164,7 @@ class SudokuGUI:
                     else:
                         self.selected = None
                         if x >= self.solveButton[0] and x <= self.solveButton[1] and y >= self.solveButton[2] and y <= self.solveButton[3]:
-                            self.board.solve()
+                            self.board.solve_bt()
                 elif event.type == pygame.KEYDOWN and self.selected != None:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                         if self.selected[0] == 0:
@@ -177,37 +188,48 @@ class SudokuGUI:
                             self.selected = (self.selected[0], self.selected[1] + 1)
                     elif event.key == pygame.K_0 or event.key == pygame.K_BACKSPACE:
                         self.board.grid[self.selected[1]][self.selected[0]] = 0
+                        self.board.update_small_grid(self.selected, 0)
                     elif event.key == pygame.K_1:
                         if self.board.is_valid(self.selected, 1):
                             self.board.grid[self.selected[1]][self.selected[0]] = 1
+                            self.board.update_small_grid(self.selected, 1)
                     elif event.key == pygame.K_2:
                         if self.board.is_valid(self.selected, 2):
                             self.board.grid[self.selected[1]][self.selected[0]] = 2
+                            self.board.update_small_grid(self.selected, 2)
                     elif event.key == pygame.K_3:
                         if self.board.is_valid(self.selected, 3):
                             self.board.grid[self.selected[1]][self.selected[0]] = 3
+                            self.board.update_small_grid(self.selected, 3)
                     elif event.key == pygame.K_4:
                         if self.board.is_valid(self.selected, 4):
                             self.board.grid[self.selected[1]][self.selected[0]] = 4
+                            self.board.update_small_grid(self.selected, 4)
                     elif event.key == pygame.K_5:
                         if self.board.is_valid(self.selected, 5):
                             self.board.grid[self.selected[1]][self.selected[0]] = 5
+                            self.board.update_small_grid(self.selected, 5)
                     elif event.key == pygame.K_6:
                         if self.board.is_valid(self.selected, 6):
                             self.board.grid[self.selected[1]][self.selected[0]] = 6
+                            self.board.update_small_grid(self.selected, 6)
                     elif event.key == pygame.K_7:
                         if self.board.is_valid(self.selected, 7):
                             self.board.grid[self.selected[1]][self.selected[0]] = 7
+                            self.board.update_small_grid(self.selected, 7)
                     elif event.key == pygame.K_8:
                         if self.board.is_valid(self.selected, 8):
                             self.board.grid[self.selected[1]][self.selected[0]] = 8
+                            self.board.update_small_grid(self.selected, 8)
                     elif event.key == pygame.K_9:
                         if self.board.is_valid(self.selected, 9):
                             self.board.grid[self.selected[1]][self.selected[0]] = 9
+                            self.board.update_small_grid(self.selected, 9)
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
                         self.selected = None
                         self.board.grid = np.zeros((9,9))
+                        self.board.small_grids = np.zeros((9, 3, 3))
 
             self.draw_window()
 
