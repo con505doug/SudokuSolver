@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
 import sys
+import time
 
 pygame.init()
 
@@ -22,6 +23,7 @@ class SudokuBoard:
         self.small_grids = np.zeros((9, 3, 3))
         self.root_indexs = []
         self.potential_indexs = []
+        self.time = None
 
     '''def get_small_grids(self):
         x = 0
@@ -73,11 +75,14 @@ class SudokuBoard:
         
         for k in range(9):
             number = k + 1
-            for event in pygame.event.get():
+            '''for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    sys.exit()
+                    sys.exit()'''
             #root.draw_window()
             if self.is_valid((index[1],index[0]), number):
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        sys.exit()
                 self.grid[index[0]][index[1]] = number
                 self.update_small_grid((index[1], index[0]), number)
                 root.draw_window()
@@ -99,6 +104,7 @@ class SudokuGUI:
         self.distance = BOARD_WIDTH / 9
         self.selected = None
         self.solveButton = None
+        self.solveTime = None
         pygame.display.set_caption('SUDOKU SOLVER')
 
     def draw_grid(self):
@@ -164,7 +170,13 @@ class SudokuGUI:
                     else:
                         self.selected = None
                         if x >= self.solveButton[0] and x <= self.solveButton[1] and y >= self.solveButton[2] and y <= self.solveButton[3]:
+                            start_time = time.perf_counter()
+                            self.board.time = time.time()
                             self.board.solve_bt()
+                            end_time = time.perf_counter()
+                            self.solveTime = end_time - start_time
+                            print(self.solveTime)
+
                 elif event.type == pygame.KEYDOWN and self.selected != None:
                     if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                         if self.selected[0] == 0:
