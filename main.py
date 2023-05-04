@@ -19,6 +19,8 @@ class SudokuBoard:
     def __init__(self):
         self.grid = np.zeros((9,9))
         self.small_grids = np.zeros((9, 3, 3))
+        self.root_indexs = []
+        self.potential_indexs = []
 
     def get_small_grids(self):
         x = 0
@@ -32,24 +34,50 @@ class SudokuBoard:
             x += 3
     
     def is_valid(self, index, number):
-        x, y = index
+        col, row = index
         self.get_small_grids()
-        tmp = x // 3
-        tmp2 = y // 3
-        grid_index = tmp + tmp2 * 3
-        if number in self.grid[:, x]:
+        tmp = row // 3
+        tmp2 = col // 3
+        grid_index = tmp * 3 + tmp2
+        if number in self.grid[row]:
             return False
-        elif number in self.grid[y]:
+        elif number in self.grid[:, col]:
             return False
         elif number in self.small_grids[grid_index]:
             return False
         else:
+            self.root_indexs.append(index)
             return True
+
+    def get_next_index(self, index):
+        if index[1] == 8:
+            return (index[0] + 1, 0)
+        else:
+            return (index[0], index[1] + 1)
 
 
     def solve(self):
-        print("hey")
+        try:
+            index = np.argwhere(self.grid == 0)[0]
+        except IndexError:
+            return True
+        
+        if self.grid[index[0]][index[1]] == 0:
+            for k in range(9):
+                number = k + 1
+                if self.is_valid((index[1],index[0]), number):
+                    self.potential_indexs.append(index)
+                    self.grid[index[0]][index[1]] = number
+                    root.draw_window()
+                    if self.solve() == True:
+                        return True
+                    self.grid[index[0]][index[1]] = 0
+                    self.potential_indexs.pop()
+            return False
+        else:
+            return self.solve()
 
+        
 
 class SudokuGUI:
     def __init__(self):
@@ -176,6 +204,10 @@ class SudokuGUI:
                     elif event.key == pygame.K_9:
                         if self.board.is_valid(self.selected, 9):
                             self.board.grid[self.selected[1]][self.selected[0]] = 9
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_r:
+                        self.selected = None
+                        self.board.grid = np.zeros((9,9))
 
             self.draw_window()
 
@@ -184,4 +216,3 @@ class SudokuGUI:
 if __name__ == '__main__':
     root = SudokuGUI()
     root.run()
-
