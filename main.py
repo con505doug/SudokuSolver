@@ -24,6 +24,7 @@ class SudokuBoard:
         self.root_indexs = []
         self.potential_indexs = []
         self.time = None
+        self.show_visual = False
 
     '''def get_small_grids(self):
         x = 0
@@ -85,7 +86,8 @@ class SudokuBoard:
                         sys.exit()
                 self.grid[index[0]][index[1]] = number
                 self.update_small_grid((index[1], index[0]), number)
-                root.draw_window()
+                if self.show_visual == True:
+                    root.draw_window()
                 if self.solve_bt() == True:
                     return True
                 self.grid[index[0]][index[1]] = 0
@@ -104,6 +106,7 @@ class SudokuGUI:
         self.distance = BOARD_WIDTH / 9
         self.selected = None
         self.solveButton = None
+        self.startTime = None
         self.solveTime = None
         pygame.display.set_caption('SUDOKU SOLVER')
 
@@ -141,6 +144,29 @@ class SudokuGUI:
             solveText = FONT.render(' Solve ', True, BLACK, LIGHT_GRAY)
         
         self.screen.blit(solveText, solveRect)
+    
+    def display_text(self):
+        text = FONT.render('Press R to Reset   Press T to Toggle Visual', True, BLACK)
+        textRect = text.get_rect()
+        textRect.center = (250, 550)
+        self.screen.blit(text, textRect)
+    
+    def display_time(self):
+        text = FONT.render('Time Taken', True, BLACK)
+        textRect = text.get_rect()
+        textRect.center = (530, 25)
+        self.screen.blit(text, textRect)
+        if self.startTime == None:
+            currentTime = 0.0
+        elif self.solveTime != None:
+            currentTime = self.solveTime
+        else: 
+            currentTime = time.time() - self.startTime
+        currentTime = round(currentTime, 2)
+        cur_time = FONT.render(str(currentTime), True, BLACK)
+        timeRect = cur_time.get_rect()
+        timeRect.center = (530, 50)
+        self.screen.blit(cur_time, timeRect)
         
         
     def draw_window(self):
@@ -150,6 +176,8 @@ class SudokuGUI:
         if self.selected != None:
             self.highlight_cell()
         self.display_buttons()
+        self.display_text()
+        self.display_time()
         pygame.display.update()
 
 
@@ -170,14 +198,20 @@ class SudokuGUI:
                     else:
                         self.selected = None
                         if x >= self.solveButton[0] and x <= self.solveButton[1] and y >= self.solveButton[2] and y <= self.solveButton[3]:
+                            self.solveTime = None
                             start_time = time.perf_counter()
-                            self.board.time = time.time()
+                            self.startTime = time.time()
                             self.board.solve_bt()
                             end_time = time.perf_counter()
                             self.solveTime = end_time - start_time
-                            print(self.solveTime)
 
                 elif event.type == pygame.KEYDOWN and self.selected != None:
+                    if event.key == pygame.K_r:
+                        self.solveTime = None
+                        self.startTime = None
+                        self.selected = None
+                        self.board.grid = np.zeros((9,9))
+                        self.board.small_grids = np.zeros((9, 3, 3))
                     if event.key == pygame.K_LEFT or event.key == pygame.K_a:
                         if self.selected[0] == 0:
                             self.selected = None
@@ -239,9 +273,16 @@ class SudokuGUI:
                             self.board.update_small_grid(self.selected, 9)
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
+                        self.solveTime = None
+                        self.startTime = None
                         self.selected = None
                         self.board.grid = np.zeros((9,9))
                         self.board.small_grids = np.zeros((9, 3, 3))
+                    if event.key == pygame.K_t:
+                        if self.board.show_visual == False:
+                            self.board.show_visual = True
+                        else:
+                            self.board.show_visual = False
 
             self.draw_window()
 
