@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 import sys
 import time
+import copy
 
 pygame.init()
 
@@ -22,20 +23,33 @@ class SudokuBoard:
         self.grid = np.zeros((9,9))
         self.small_grids = np.zeros((9, 3, 3))
         self.root_indexs = []
-        self.potential_indexs = []
+        self.potential_indexs = [[], [], [], [], [], [], [], [], []]
+        self.small_potentials = [[], [], [], [], [], [], [], [], []]
+        self.hidden_singles = []
+        self.possible_values = []
         self.time = None
         self.show_visual = False
+        self.is_solveable = True
+        self.counts = []
 
-    '''def get_small_grids(self):
-        x = 0
-        count = 0
-        for i in range(3):
-            y = 0
-            for j in range(3):
-                self.small_grids[count] = self.grid[x:(x+3), y:(y+3)]
-                y += 3
-                count += 1
-            x += 3'''
+    def check_counts(self):
+        j = 0
+        for small_grid in self.small_potentials:
+            counts = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+            indexs = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+            for i in range(9):
+                potentials = small_grid[i]
+                for number in potentials:
+                    counts[number-1] += 1
+                    if counts[number-1] == 1:
+                        col = (j % 3) * 3 + (i % 3)
+                        row = (j // 3) * 3 + (i // 3)
+                        indexs[number-1] = (col, row)
+                    else:
+                        indexs[number-1] = 0
+            self.hidden_singles.append(indexs)
+            j += 1
+                                
 
     def update_small_grid(self, selected, number):
         tmp = selected[1] // 3
@@ -66,7 +80,38 @@ class SudokuBoard:
             return (index[0] + 1, 0)
         else:
             return (index[0], index[1] + 1)
-
+        
+    def get_possible_values(self):
+        self.possible_values = []
+        self.potential_indexs = [[], [], [], [], [], [], [], [], []]
+        self.small_potentials = [[], [], [], [], [], [], [], [], []]
+        self.hidden_singles = []
+        for row in range(9):
+            for col in range(9):
+                possible_values = []
+                tmp = row // 3
+                tmp2 = col // 3
+                grid_index = tmp * 3 + tmp2
+                if self.grid[row][col] != 0:
+                    self.possible_values.append(possible_values)
+                    self.small_potentials[grid_index].append(possible_values)
+                    continue
+                for number in range(1, 10):
+                    if self.is_valid((col, row), number):
+                        possible_values.append(number)
+                if possible_values:
+                    size = len(possible_values) - 1
+                    self.potential_indexs[size].append((col, row))
+                    self.possible_values.append(possible_values)
+                    self.small_potentials[grid_index].append(possible_values)
+                    
+                else:
+                    self.possible_values.append(possible_values)
+                    self.small_potentials[grid_index].append(possible_values)
+                    self.is_solveable = False
+                    return False
+        return True
+                    
 
     def solve_bt(self):
         try:
@@ -74,12 +119,7 @@ class SudokuBoard:
         except IndexError:
             return True
         
-        for k in range(9):
-            number = k + 1
-            '''for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    sys.exit()'''
-            #root.draw_window()
+        for number in range(1, 10):
             if self.is_valid((index[1],index[0]), number):
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
@@ -92,8 +132,88 @@ class SudokuBoard:
                     return True
                 self.grid[index[0]][index[1]] = 0
                 self.update_small_grid((index[1], index[0]), 0)
-        #root.draw_window()
         return False
+    
+    def solve_logic_bt(self):
+        #print(self.potential_indexs, "\n")
+        #print(self.possible_values, "\n")
+        #print(self.small_potentials, "\n")
+        try:
+            np.argwhere(self.grid == 0)[0]
+        except IndexError:
+            return True
+
+        if not self.get_possible_values():
+            return False
+        # naked singles
+        if self.potential_indexs[0]:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+            index = self.potential_indexs.pop(0)
+            col, row = index[0]
+            pIndex = row*9 + col
+            tmp_pv = self.possible_values[pIndex]
+            self.grid[row][col] = tmp_pv[0]
+            self.update_small_grid((col, row), tmp_pv[0])
+            #self.possible_values[pIndex] = []
+            if self.show_visual == True:
+                root.draw_window()
+            if self.solve_logic_bt() == True:
+                return True
+            self.grid[row][col] = 0
+            self.update_small_grid((col, row), 0)
+            self.potential_indexs.insert(0, index)
+            self.possible_values.insert(pIndex, tmp_pv)
+            self.get_possible_values()
+            return False
+        
+        #hidden singles
+        self.check_counts()
+        for val in self.hidden_singles:
+            num = 1
+            for possible_index in val:
+                if possible_index != 0:
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            sys.exit()
+                    col, row = possible_index
+                    self.grid[row][col] = num
+                    self.update_small_grid((col, row), num)
+                    if self.show_visual == True:
+                        root.draw_window()
+                    if self.solve_logic_bt() == True:
+                        return True
+                    self.grid[row][col] = 0
+                    self.update_small_grid((col, row), 0)
+                    self.get_possible_values()
+                    return False
+                num += 1
+
+
+        #back tracking if that fails
+        for potentials in self.potential_indexs:
+            if potentials:
+                index = potentials[0]
+                for number in range(1, 10):
+                    if self.is_valid((index[0], index[1]), number):
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT:
+                                sys.exit()
+                        self.grid[index[1]][index[0]] = number
+                        self.update_small_grid((index[0], index[1]), number)
+                        if self.show_visual == True:
+                            root.draw_window()
+                        if self.solve_logic_bt() == True:
+                            return True
+                        self.grid[index[1]][index[0]] = 0
+                        self.update_small_grid((index[0], index[1]), 0)
+                return False
+            else:
+                continue
+
+        return True
+
 
         
 
@@ -106,8 +226,10 @@ class SudokuGUI:
         self.distance = BOARD_WIDTH / 9
         self.selected = None
         self.solveButton = None
+        self.solve2Button = None
         self.startTime = None
         self.solveTime = None
+        self.revert = SudokuBoard()
         pygame.display.set_caption('SUDOKU SOLVER')
 
     def draw_grid(self):
@@ -135,15 +257,25 @@ class SudokuGUI:
     
     def display_buttons(self):
         mouse = pygame.mouse.get_pos()
-        solveText = FONT.render(' Solve ', True, BLACK, GRAY)
+        solveText = FONT.render(' Solve-BT ', True, BLACK, GRAY)
         solveRect = solveText.get_rect()
-        solveRect.center = (47, 500)
+        solveRect.center = (67, 500)
         solveBounds = [solveRect.left, solveRect.right, solveRect.top, solveRect.bottom]
         self.solveButton = solveBounds
         if mouse[0] >= solveBounds[0] and mouse[0] <= solveBounds[1] and mouse[1] >= solveBounds[2] and mouse[1] <= solveBounds[3]:
-            solveText = FONT.render(' Solve ', True, BLACK, LIGHT_GRAY)
+            solveText = FONT.render(' Solve-BT ', True, BLACK, LIGHT_GRAY)
+
+        solve2Text = FONT.render(' Solve-Logic+BT ', True, BLACK, GRAY)
+        solve2Rect = solve2Text.get_rect()
+        solve2Rect.center = (240, 500)
+        solve2Bounds = [solve2Rect.left, solve2Rect.right, solve2Rect.top, solve2Rect.bottom]
+        self.solve2Button = solve2Bounds
+        if mouse[0] >= solve2Bounds[0] and mouse[0] <= solve2Bounds[1] and mouse[1] >= solve2Bounds[2] and mouse[1] <= solve2Bounds[3]:
+            solve2Text = FONT.render(' Solve-Logic+BT ', True, BLACK, LIGHT_GRAY)
+
         
         self.screen.blit(solveText, solveRect)
+        self.screen.blit(solve2Text, solve2Rect)
     
     def display_text(self):
         text = FONT.render('Press R to Reset   Press T to Toggle Visual', True, BLACK)
@@ -199,11 +331,27 @@ class SudokuGUI:
                         self.selected = None
                         if x >= self.solveButton[0] and x <= self.solveButton[1] and y >= self.solveButton[2] and y <= self.solveButton[3]:
                             self.solveTime = None
+                            '''board_copy = copy.deepcopy(self.board.grid)
+                            small_grid_copy = copy.deepcopy(self.board.small_grids)
+                            self.revert.grid = board_copy
+                            self.revert.small_grids = small_grid_copy'''
+                            self.revert = copy.deepcopy(self.board)
                             start_time = time.perf_counter()
                             self.startTime = time.time()
                             self.board.solve_bt()
                             end_time = time.perf_counter()
                             self.solveTime = end_time - start_time
+
+                        elif x >= self.solve2Button[0] and x <= self.solve2Button[1] and y >= self.solve2Button[2] and y <= self.solve2Button[3]:
+                            self.solveTime = None
+                            self.revert = copy.deepcopy(self.board)
+                            start_time = time.perf_counter()
+                            self.startTime = time.time()
+                            #self.board.get_possible_values()
+                            self.board.solve_logic_bt()
+                            end_time = time.perf_counter()
+                            self.solveTime = end_time - start_time
+                
 
                 elif event.type == pygame.KEYDOWN and self.selected != None:
                     if event.key == pygame.K_r:
@@ -212,7 +360,17 @@ class SudokuGUI:
                         self.selected = None
                         self.board.grid = np.zeros((9,9))
                         self.board.small_grids = np.zeros((9, 3, 3))
-                    if event.key == pygame.K_LEFT or event.key == pygame.K_a:
+                    elif event.key == pygame.K_e:
+                        self.solveTime = None
+                        self.startTime = None
+                        self.selected = None
+                        self.board = self.revert
+                    elif event.key == pygame.K_t:
+                        if self.board.show_visual == False:
+                            self.board.show_visual = True
+                        else:
+                            self.board.show_visual = False
+                    elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
                         if self.selected[0] == 0:
                             self.selected = None
                         else:
@@ -278,11 +436,16 @@ class SudokuGUI:
                         self.selected = None
                         self.board.grid = np.zeros((9,9))
                         self.board.small_grids = np.zeros((9, 3, 3))
-                    if event.key == pygame.K_t:
+                    elif event.key == pygame.K_t:
                         if self.board.show_visual == False:
                             self.board.show_visual = True
                         else:
                             self.board.show_visual = False
+                    elif event.key == pygame.K_e:
+                        self.solveTime = None
+                        self.startTime = None
+                        self.selected = None
+                        self.board = self.revert
 
             self.draw_window()
 
